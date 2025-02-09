@@ -2,22 +2,21 @@ package handlers
 
 import (
 	// "SHUTKANULbot/bot/handlers/MenuJokes"
+	TonConnectCallback "SHUTKANULbot/TonConnectCallBack"
 	"SHUTKANULbot/bot/context"
 	"SHUTKANULbot/bot/handlers/MenuJokes"
 	"SHUTKANULbot/bot/handlers/start"
+	"SHUTKANULbot/db"
+	"SHUTKANULbot/db/models"
 	"strings"
 )
 
 var nameHandlers = map[string]func(*context.BotContext){
 	"start":    start.Handle,
 	"JokeMenu": MenuJokes.Handle,
-	// "ads":          ads.Handle,
-	// "profile":      profile.Handle,
-	// "Verification": verification.Handle,
 }
 
 func HandleUpdate(botCtx *context.BotContext) {
-
 	state := context.GetUserState(botCtx)
 	if botCtx.Message != nil {
 		switch botCtx.Message.Command() {
@@ -37,38 +36,56 @@ func HandleUpdate(botCtx *context.BotContext) {
 	} else {
 		if botCtx.CallbackQuery != nil {
 			switch strings.Split(botCtx.CallbackQuery.Data, "_")[0] {
-			// case "adsMenu":
-			// 	context.UpdateUserName(userId, ctx, "ads")
-			// 	ads.HandleMenu(update, ctx)
 			case "StartMenu":
 				context.UpdateUserName(botCtx, "start")
 				start.HandleStartCommand(botCtx)
-			case "NweJoke":
+			case "Docs":
+				context.UpdateUserName(botCtx, "start")
+				start.HandleDocs(botCtx)
+			case "ConnectWallet":
+				context.UpdateUserName(botCtx, "start")
+				start.HandleTonConnect(botCtx)
+			case "Settings":
+				context.UpdateUserName(botCtx, "start")
+				start.HandleSettings(botCtx)
+			case "Withdraw":
+				context.UpdateUserName(botCtx, "start")
+				start.HandleWithdraw(botCtx)
+			case "DisconnectWallet":
+				context.UpdateUserName(botCtx, "start")
+				TonConnectCallback.Disconnect(botCtx.UserID)
+				start.HandleSettings(botCtx)
+			case "SetAuthor":
+				context.UpdateUserName(botCtx, "start")
+				start.HandleSetAuthor(botCtx)
+			case "SetAnonymsMode":
+				var user models.User
+				db.DB.Where(&models.User{TelegramID: botCtx.UserID}).First(&user)
+				user.SetAnonymsMode(db.DB)
+				context.UpdateUserName(botCtx, "start")
+				start.HandleSettings(botCtx)
+			case "NewJoke":
 				context.UpdateUserName(botCtx, "JokeMenu")
 				MenuJokes.NewJokeHandle(botCtx)
 			case "ViewJokes":
 				context.UpdateUserName(botCtx, "JokeMenu")
 				MenuJokes.HandleJokeViewer(botCtx)
-				// case "AddAds":
-				// 	ads.HandleSelectADS(update, ctx)
-				// case "AdsHistory":
-				// 	ads.HandleSelectADSHistory(update, ctx)
-				// case "profile":
-				// 	context.UpdateUserName(userId, ctx, "profile")
-				// 	profile.HandleProfile(update, ctx)
-				// case "+balance":
-				// 	profile.HandleSelectPaymentMetod(update, ctx)
-				// case "Docs":
-				// 	start.HandleDocs(update, ctx)
-				// case "Transfer":
-				// 	profile.HandleDoPayment(update, ctx)
-				// case "Verification":
-				// 	if len(strings.Split(update.CallbackQuery.Data, "_")) == 2 && strings.Split(update.CallbackQuery.Data, "_")[1] == strconv.Itoa(state.MessageID) {
-				// 		context.UpdateUserName(userId, ctx, "Verification")
-				// 		verification.HandleVerification(update, ctx)
-				// 	}
-			}
+			case "MyJokes":
+				context.UpdateUserName(botCtx, "JokeMenu")
+				MenuJokes.HandleMyJokes(botCtx)
 
+			default:
+				state.MessageID = 0
+				context.ClearAllUserData(botCtx)
+				start.HandleStartCommand(botCtx)
+				return
+			}
+		}
+		if botCtx.Message != nil {
+			state.MessageID = 0
+			context.ClearAllUserData(botCtx)
+			start.HandleStartCommand(botCtx)
+			return
 		}
 	}
 

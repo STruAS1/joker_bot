@@ -9,6 +9,8 @@ import (
 type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	Bot      BotConfig      `yaml:"bot"`
+	Domines  string         `yaml:"domines"`
+	FromSeed string         `yaml:"fromSeed"`
 }
 
 type DatabaseConfig struct {
@@ -20,7 +22,8 @@ type DatabaseConfig struct {
 }
 
 type BotConfig struct {
-	Token string `yaml:"token"`
+	Token   string `yaml:"token"`
+	AdminId int64  `yaml:"adminId"`
 }
 
 func LoadConfig() *Config {

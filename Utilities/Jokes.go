@@ -5,7 +5,6 @@ import (
 	"SHUTKANULbot/db/models"
 	"fmt"
 	"log"
-	"math"
 	"sync"
 	"time"
 )
@@ -21,9 +20,10 @@ var (
 )
 
 type Joke struct {
-	ID     uint   `gorm:"column:id"`
-	Text   string `gorm:"column:text"`
-	Author string `gorm:"column:author_user_name"`
+	ID          uint   `gorm:"column:id"`
+	Text        string `gorm:"column:text"`
+	Author      string `gorm:"column:author_user_name"`
+	AnonymsMode bool   `gorm:"column:anonyms_mode"`
 }
 
 func GetFifteenJokes(UserId uint) []Joke {
@@ -31,55 +31,83 @@ func GetFifteenJokes(UserId uint) []Joke {
 	db.DB.Model(&models.JokesEvaluations{}).
 		Where(`"user_id" = ? AND "created_at" >= ?`, UserId, time.Now().Add(-24*time.Hour)).
 		Pluck(`"joke_id"`, &evaluatedJokeIDs)
+
+	evaluatedJokeIDs = removeDuplicates(evaluatedJokeIDs)
+
 	if len(evaluatedJokeIDs) == 0 {
 		evaluatedJokeIDs = append(evaluatedJokeIDs, 0)
 	}
+
 	var jokes []Joke
 
 	db.DB.Raw(`
     WITH ranked_jokes AS (
-        SELECT j.id, j.text, u.author_user_name,
+        SELECT DISTINCT ON (j.id) 
+            j.id, 
+            j.text, 
+            j.author_user_name, 
+            j.anonyms_mode,
             1 as category,
-            ROW_NUMBER() OVER (PARTITION BY 1 ORDER BY (j.avg_score * j.evaluations) / (POWER(DATE_PART('day', NOW() - j.created_at) + 1, 1.2)) DESC) as row_num
+            ROW_NUMBER() OVER (
+                PARTITION BY 1 
+                ORDER BY (j.avg_score * j.evaluations) / (POWER(DATE_PART('day', NOW() - j.created_at) + 1, 1.2)) DESC
+            ) as row_num
         FROM jokes j
-        JOIN "Users" u ON j.user_id = u.id
         WHERE j.evaluations < 10 AND j.id NOT IN (?)
         
         UNION ALL
 
-        SELECT j.id, j.text, u.author_user_name,
+        SELECT DISTINCT ON (j.id) 
+            j.id, 
+            j.text, 
+            j.author_user_name, 
+            j.anonyms_mode,
             2 as category,
-            ROW_NUMBER() OVER (PARTITION BY 2 ORDER BY ABS(
-                COALESCE(
-                    (SELECT AVG(e.evaluation) FROM "JokesEvaluations" e WHERE e.joke_id = j.id GROUP BY e.joke_id) - 
-                    (SELECT AVG(e.evaluation) FROM "JokesEvaluations" e WHERE e.joke_id = j.id GROUP BY e.joke_id),
-                0)
-            ) DESC) as row_num
+            ROW_NUMBER() OVER (
+                PARTITION BY 2 
+                ORDER BY ABS(
+                    COALESCE(
+                        (SELECT AVG(e.evaluation) FROM "JokesEvaluations" e WHERE e.joke_id = j.id GROUP BY e.joke_id) - 
+                        (SELECT AVG(e.evaluation) FROM "JokesEvaluations" e WHERE e.joke_id = j.id GROUP BY e.joke_id),
+                    0)
+                ) DESC
+            ) as row_num
         FROM jokes j
-        JOIN "Users" u ON j.user_id = u.id
         WHERE j.evaluations BETWEEN 10 AND 50 AND j.id NOT IN (?)
 
         UNION ALL
 
-        SELECT j.id, j.text, u.author_user_name,
+        SELECT DISTINCT ON (j.id) 
+            j.id, 
+            j.text, 
+            j.author_user_name, 
+            j.anonyms_mode,
             3 as category,
-            ROW_NUMBER() OVER (PARTITION BY 3 ORDER BY (100 - COALESCE(STDDEV(e.evaluation) / NULLIF(AVG(e.evaluation), 0) * 100, 0)) DESC) as row_num
+            ROW_NUMBER() OVER (
+                PARTITION BY 3 
+                ORDER BY (100 - COALESCE(STDDEV(e.evaluation) / NULLIF(AVG(e.evaluation), 0) * 100, 0)) DESC
+            ) as row_num
         FROM jokes j
-        JOIN "Users" u ON j.user_id = u.id
         JOIN "JokesEvaluations" e ON e.joke_id = j.id
         WHERE j.evaluations BETWEEN 50 AND 100 AND j.id NOT IN (?)
-        GROUP BY j.id, j.text, u.author_user_name
+        GROUP BY j.id, j.text, j.author_user_name, j.anonyms_mode
 
         UNION ALL
 
-        SELECT j.id, j.text, u.author_user_name,
+        SELECT DISTINCT ON (j.id) 
+            j.id, 
+            j.text, 
+            j.author_user_name, 
+            j.anonyms_mode,
             4 as category,
-            ROW_NUMBER() OVER (PARTITION BY 4 ORDER BY j.avg_score * (1 - (DATE_PART('day', NOW() - j.created_at) / 30.0)) DESC) as row_num
+            ROW_NUMBER() OVER (
+                PARTITION BY 4 
+                ORDER BY j.avg_score * (1 - (DATE_PART('day', NOW() - j.created_at) / 30.0)) DESC
+            ) as row_num
         FROM jokes j
-        JOIN "Users" u ON j.user_id = u.id
         WHERE j.evaluations > 100 AND j.id NOT IN (?)
     )
-    SELECT id, text, author_user_name 
+    SELECT id, text, author_user_name, anonyms_mode 
     FROM ranked_jokes 
     ORDER BY category, row_num 
     LIMIT 15;
@@ -87,27 +115,60 @@ func GetFifteenJokes(UserId uint) []Joke {
 
 	if len(jokes) < 15 {
 		var extraJokes []Joke
-		db.DB.Table("jokes").
-			Select(`"id", "text", (SELECT "author_user_name" FROM "Users" WHERE "Users"."id" = "jokes"."user_id") AS "author_user_name"`).
-			Where(`"id" NOT IN (?)`, evaluatedJokeIDs).
-			Order(`"avg_score" DESC, "evaluations" DESC`).
-			Limit(15 - len(jokes)).
-			Find(&extraJokes)
-		jokes = append(jokes, extraJokes...)
+		db.DB.Raw(`
+        SELECT DISTINCT ON (j.id) 
+            j.id, 
+            j.text, 
+            j.author_user_name, 
+            j.anonyms_mode
+        FROM jokes j
+        WHERE j.id NOT IN (?)
+        ORDER BY j.id, j.avg_score DESC, j.evaluations DESC
+        LIMIT ?`, evaluatedJokeIDs, 15-len(jokes)).Scan(&extraJokes)
+
+		jokes = append(jokes, removeDuplicateJokes(extraJokes)...)
 	}
 
 	if len(jokes) < 15 {
 		var latestJokes []Joke
-		db.DB.Table("jokes").
-			Select(`"id", "text", (SELECT "author_user_name" FROM "Users" WHERE "Users"."id" = "jokes"."user_id") AS "author_user_name"`).
-			Where(`"id" NOT IN (?)`, evaluatedJokeIDs).
-			Order(`"created_at" DESC`).
-			Limit(15 - len(jokes)).
-			Find(&latestJokes)
-		jokes = append(jokes, latestJokes...)
-	}
+		db.DB.Raw(`
+        SELECT DISTINCT ON (j.id) 
+            j.id, 
+            j.text, 
+            j.author_user_name, 
+            j.anonyms_mode
+        FROM jokes j
+        WHERE j.id NOT IN (?)
+        ORDER BY j.id, j.created_at DESC
+        LIMIT ?`, evaluatedJokeIDs, 15-len(jokes)).Scan(&latestJokes)
 
-	return jokes
+		jokes = append(jokes, removeDuplicateJokes(latestJokes)...)
+	}
+	return removeDuplicateJokes(jokes)
+}
+
+func removeDuplicates(ids []uint) []uint {
+	seen := make(map[uint]bool)
+	result := []uint{}
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			result = append(result, id)
+		}
+	}
+	return result
+}
+
+func removeDuplicateJokes(jokes []Joke) []Joke {
+	seen := make(map[uint]bool)
+	result := []Joke{}
+	for _, joke := range jokes {
+		if !seen[joke.ID] {
+			seen[joke.ID] = true
+			result = append(result, joke)
+		}
+	}
+	return result
 }
 
 func startCacheCleaner() {
@@ -163,7 +224,7 @@ func GetNextJoke(userTGId int64) (Joke, error) {
 
 	return nextJoke, nil
 }
-func AddJokeEvaluation(tgId int64, jokeId uint, evaluation uint8) error {
+func AddJokeEvaluation(tgId int64, jokeId uint, evaluation uint) error {
 	if evaluation < 1 || evaluation > 5 {
 		return fmt.Errorf("оценка должна быть от 1 до 5")
 	}
@@ -176,37 +237,11 @@ func AddJokeEvaluation(tgId int64, jokeId uint, evaluation uint8) error {
 		return fmt.Errorf("пользователь с tgId %d не найден", tgId)
 	}
 
-	newEvaluation := models.JokesEvaluations{
-		UserID:     user.ID,
-		JokeId:     jokeId,
-		Evaluation: evaluation,
-	}
-	if err := db.DB.Create(&newEvaluation).Error; err != nil {
-		return fmt.Errorf("ошибка при создании оценки: %v", err)
-	}
-
 	var joke models.Jokes
 	if err := db.DB.First(&joke, jokeId).Error; err != nil {
 		return fmt.Errorf("шутка с ID %d не найдена", jokeId)
 	}
-
-	newEvaluations := joke.Evaluations + 1
-	newAvgScore := ((float64(joke.AVGScore) * float64(joke.Evaluations)) + (float64(evaluation) * 20)) / float64(newEvaluations)
-
-	finalScore := uint8(math.Round(newAvgScore))
-	if finalScore < 1 {
-		finalScore = 1
-	} else if finalScore > 100 {
-		finalScore = 100
-	}
-
-	joke.AVGScore = finalScore
-	joke.Evaluations = newEvaluations
-
-	if err := db.DB.Save(&joke).Error; err != nil {
-		return fmt.Errorf("ошибка при обновлении данных шутки: %v", err)
-	}
-
+	joke.AddEvaluation(db.DB, &user, evaluation)
 	log.Printf("Оценка обновлена: joke_id=%d, new_avg_score=%d, total_evaluations=%d", jokeId, joke.AVGScore, joke.Evaluations)
 	return nil
 }

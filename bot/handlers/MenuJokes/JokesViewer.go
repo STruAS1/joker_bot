@@ -4,6 +4,7 @@ import (
 	"SHUTKANULbot/Utilities"
 	"SHUTKANULbot/bot/context"
 	"fmt"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -20,7 +21,7 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 			msg := tgbotapi.NewEditMessageTextAndMarkup(
 				botCtx.UserID,
 				state.MessageID,
-				"Шуток больше нету",
+				"Шуток больше нет",
 				tgbotapi.NewInlineKeyboardMarkup(rows...),
 			)
 			msg.ParseMode = "HTML"
@@ -28,7 +29,7 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 		} else {
 			msg := tgbotapi.NewMessage(
 				botCtx.UserID,
-				"Шуток больше нету",
+				"Шуток больше нет",
 			)
 			msg.ParseMode = "HTML"
 			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
@@ -39,6 +40,9 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(fmt.Sprint(i+1), fmt.Sprintf("Evolution_%d_%d", i+1, Joke.ID)))
 	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(row...))
+	if !Joke.AnonymsMode && Joke.Author != "" {
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Автор", fmt.Sprintf("https://t.me/%s", strings.TrimPrefix(Joke.Author, "@")))))
+	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("В главное меню", "Start")))
 
 	if state.MessageID != 0 {

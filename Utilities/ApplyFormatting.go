@@ -9,13 +9,45 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func removeHTMLTags(input string) string {
+func RemoveHTMLTags(input string) string {
 	re := regexp.MustCompile(`<[^>]*>`)
 	return re.ReplaceAllString(input, "")
 }
 
+var fancyDigits = map[rune]rune{
+	'0': '𝟘', '1': '𝟙', '2': '𝟚', '3': '𝟛', '4': '𝟜',
+	'5': '𝟝', '6': '𝟞', '7': '𝟟', '8': '𝟠', '9': '𝟡',
+	'.': '.',
+}
+
+func ConvertToFancyString(num int) string {
+	numStr := fmt.Sprintf("%d", num)
+	var builder strings.Builder
+	for _, digit := range numStr {
+		if fancy, ok := fancyDigits[digit]; ok {
+			builder.WriteRune(fancy)
+		} else {
+			builder.WriteRune(digit)
+		}
+	}
+	return builder.String()
+}
+func ConvertToFancyStringFloat(numStr string) string {
+	numStr = strings.TrimRight(numStr, "0")
+	numStr = strings.TrimRight(numStr, ".")
+
+	var builder strings.Builder
+	for _, digit := range numStr {
+		if fancy, ok := fancyDigits[digit]; ok {
+			builder.WriteRune(fancy)
+		} else {
+			builder.WriteRune(digit)
+		}
+	}
+	return builder.String()
+}
 func ApplyFormatting(text string, entities []tgbotapi.MessageEntity) string {
-	text = removeHTMLTags(text)
+	text = RemoveHTMLTags(text)
 
 	var formattedText strings.Builder
 	entityMap := make(map[int][]tgbotapi.MessageEntity)

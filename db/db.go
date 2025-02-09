@@ -23,7 +23,7 @@ func Connect(cfg *config.Config) {
 	}
 	log.Println("Connected to database.")
 
-	if err := DB.AutoMigrate(&models.User{}, &models.Jokes{}, &models.JokesEvaluations{}); err != nil {
+	if err := DB.AutoMigrate(&models.User{}, &models.Jokes{}, &models.JokesEvaluations{}, &models.Transaction{}, &models.TransactionNet{}); err != nil {
 		log.Fatalf("Error creating tables: %v", err)
 	} else {
 		log.Println("Tables created successfully.")
