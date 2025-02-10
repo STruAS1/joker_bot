@@ -246,6 +246,105 @@ func AddJokeEvaluation(tgId int64, jokeId uint, evaluation uint) error {
 	return nil
 }
 
+func GetRandomPopularJokeSafe() Joke {
+	var joke Joke
+
+	popularQuery := `
+		WITH popular AS (
+			SELECT id, text, author_user_name, anonyms_mode
+			FROM jokes
+			WHERE evaluations >= 10 AND created_at >= NOW() - INTERVAL '7 days'
+			ORDER BY (avg_score * evaluations) DESC
+			LIMIT 100
+		)
+		SELECT id, text, author_user_name, anonyms_mode
+		FROM popular
+		ORDER BY RANDOM()
+		LIMIT 1;
+	`
+
+	err := db.DB.Raw(popularQuery).Scan(&joke).Error
+	if err != nil || joke.ID == 0 {
+		fallbackQuery := `
+			SELECT id, text, author_user_name, anonyms_mode
+			FROM jokes
+			ORDER BY RANDOM()
+			LIMIT 1;
+		`
+		errFallback := db.DB.Raw(fallbackQuery).Scan(&joke).Error
+		if errFallback != nil || joke.ID == 0 {
+			joke = Joke{
+				ID:          0,
+				Text:        "Шуток не найдено, попробуй позже.",
+				Author:      "",
+				AnonymsMode: true,
+			}
+		}
+	}
+	return joke
+}
+func GetJokeByID(jokeID uint) Joke {
+	var joke Joke
+	err := db.DB.Raw(`
+		SELECT id, text, author_user_name, anonyms_mode
+		FROM jokes
+		WHERE id = ?
+		LIMIT 1
+	`, jokeID).Scan(&joke).Error
+
+	if err != nil || joke.ID == 0 {
+		return Joke{
+			ID:          jokeID,
+			Text:        "Шутка не найдена, попробуй позже.",
+			Author:      "system",
+			AnonymsMode: false,
+		}
+	}
+
+	return joke
+}
+
+func HasUserEvaluatedJoke(userID uint, jokeID uint) bool {
+	var count int64
+	err := db.DB.
+		Model(&models.JokesEvaluations{}).
+		Where(&models.JokesEvaluations{UserID: userID, JokeId: jokeID}).
+		Count(&count).Error
+
+	if err != nil {
+		return false
+	}
+	return count > 0
+}
+func GetRemainingCooldown(userIDTG uint) (string, bool) {
+	var lastJokeTime time.Time
+	var user models.User
+	db.DB.Where("telegram_id = ?", userIDTG).First(&user)
+
+	err := db.DB.Raw(`
+		SELECT created_at
+		FROM jokes
+		WHERE user_id = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, user.ID).Scan(&lastJokeTime).Error
+	if err != nil || lastJokeTime.IsZero() {
+		fmt.Print(lastJokeTime)
+		log.Printf("Ошибка при получении последней шутки для пользователя %d: %v", user.ID, err)
+		return "", false
+	}
+
+	cooldown := 12 * time.Hour
+	elapsed := time.Since(lastJokeTime)
+	if elapsed < cooldown {
+		remaining := cooldown - elapsed
+		hours := int(remaining.Hours())
+		minutes := int(remaining.Minutes()) % 60
+		return fmt.Sprintf("%dч %dм", hours, minutes), true
+	}
+	return "", false
+}
+
 func init() {
 	go startCacheCleaner()
 }

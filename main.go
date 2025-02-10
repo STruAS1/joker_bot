@@ -80,7 +80,7 @@ func handleManifest(w http.ResponseWriter, r *http.Request) {
 
 	manifest := map[string]interface{}{
 		"name":    "JOKER",
-		"url":     "https://t.me/gasgagasgagagabot",
+		"url":     "https://t.me/JOKER8BOT",
 		"iconUrl": fmt.Sprintf("https://%s/pic", cfg.Domines),
 	}
 

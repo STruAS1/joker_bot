@@ -7,6 +7,8 @@ import (
 	"SHUTKANULbot/db/models"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -30,10 +32,42 @@ func HandleStartCommand(botCtx *context.BotContext) {
 				return
 			}
 			db.DB.Where(&models.User{TelegramID: botCtx.UserID}).First(&user)
+			arg := botCtx.Message.CommandArguments()
+			if arg != "" {
+				args := strings.Split(arg, "_")
+				if len(args) == 2 {
+					switch args[0] {
+					case "joke":
+						jokeId, err := strconv.ParseUint(args[1], 10, 0)
+						if err != nil {
+							return
+						}
+						HandleJokeViewerReply(botCtx, uint(jokeId), true, user.ID)
+						return
+					}
+				}
+			}
 			HandleDocs(botCtx)
 			return
 		} else {
 			return
+		}
+	}
+	if botCtx.Message != nil {
+		arg := botCtx.Message.CommandArguments()
+		if arg != "" {
+			args := strings.Split(arg, "_")
+			if len(args) == 2 {
+				switch args[0] {
+				case "joke":
+					jokeId, err := strconv.ParseUint(args[1], 10, 0)
+					if err != nil {
+						return
+					}
+					HandleJokeViewerReply(botCtx, uint(jokeId), false, user.ID)
+					return
+				}
+			}
 		}
 	}
 
@@ -70,7 +104,7 @@ func HandleStartCommand(botCtx *context.BotContext) {
 
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("📚 Обучение", "Docs"),
-		tgbotapi.NewInlineKeyboardButtonURL("🚀 Топ угара", "https://t.me/YOUR_CHANNEL"),
+		tgbotapi.NewInlineKeyboardButtonURL("🚀 Топ угара", "https://t.me/JokerScamCoin"),
 	))
 
 	if state.MessageID == 0 {
@@ -83,6 +117,51 @@ func HandleStartCommand(botCtx *context.BotContext) {
 		msg := tgbotapi.NewEditMessageTextAndMarkup(botCtx.UserID, state.MessageID, MainText, tgbotapi.NewInlineKeyboardMarkup(rows...))
 		msg.DisableWebPagePreview = true
 		msg.ParseMode = "HTML"
+		botCtx.Ctx.BotAPI.Send(msg)
+	}
+}
+
+func HandleJokeViewerReply(botCtx *context.BotContext, jokeID uint, IsFirst bool, userId uint) {
+	state := context.GetUserState(botCtx)
+	context.UpdateUserLevel(botCtx, 5)
+	var rows [][]tgbotapi.InlineKeyboardButton
+	var row []tgbotapi.InlineKeyboardButton
+	if Utilities.HasUserEvaluatedJoke(userId, jokeID) {
+		if IsFirst {
+			HandleDocs(botCtx)
+			return
+		} else {
+			msg := tgbotapi.NewMessage(botCtx.UserID, "Вы уже оценивали эту шутку!")
+			msg.ParseMode = "HTML"
+			msg.DisableWebPagePreview = true
+			botCtx.SendMessage(msg)
+			return
+		}
+	}
+	Joke := Utilities.GetJokeByID(jokeID)
+	for i := range 5 {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData(fmt.Sprint(i+1), fmt.Sprintf("Evolution_%d_%d_%t", i+1, Joke.ID, IsFirst)))
+	}
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(row...))
+	if !Joke.AnonymsMode && Joke.Author != "" {
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Автор", fmt.Sprintf("https://t.me/%s", strings.TrimPrefix(Joke.Author, "@")))))
+	}
+	if state.MessageID != 0 {
+		msg := tgbotapi.NewEditMessageTextAndMarkup(
+			botCtx.UserID,
+			state.MessageID,
+			Joke.Text,
+			tgbotapi.NewInlineKeyboardMarkup(rows...),
+		)
+		msg.ParseMode = "HTML"
+		botCtx.Ctx.BotAPI.Send(msg)
+	} else {
+		msg := tgbotapi.NewMessage(
+			botCtx.UserID,
+			Joke.Text,
+		)
+		msg.ParseMode = "HTML"
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
 		botCtx.Ctx.BotAPI.Send(msg)
 	}
 }

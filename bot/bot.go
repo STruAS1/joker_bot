@@ -3,6 +3,7 @@ package bot
 import (
 	"SHUTKANULbot/bot/context"
 	"SHUTKANULbot/bot/handlers"
+	handlersgroup "SHUTKANULbot/bot/handlersGroup"
 	"SHUTKANULbot/config"
 	"log"
 	"sync"
@@ -59,6 +60,10 @@ func processUpdate(ctx *context.Context, update tgbotapi.Update) {
 
 	if update.Message != nil {
 		if update.Message.Chat.Type != "private" {
+			if update.Message.Chat.Type == "group" {
+				handlersgroup.HandleUpdate(ctx.BotAPI, &update)
+				return
+			}
 			return
 		}
 		userID = update.Message.Chat.ID

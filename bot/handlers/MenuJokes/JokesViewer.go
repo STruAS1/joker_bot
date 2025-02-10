@@ -40,8 +40,9 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(fmt.Sprint(i+1), fmt.Sprintf("Evolution_%d_%d", i+1, Joke.ID)))
 	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(row...))
+	Text := Joke.Text
 	if !Joke.AnonymsMode && Joke.Author != "" {
-		rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonURL("Автор", fmt.Sprintf("https://t.me/%s", strings.TrimPrefix(Joke.Author, "@")))))
+		Text += "\n\n<b><i>Автор:</i></b> @" + fmt.Sprintf("%s", strings.TrimPrefix(Joke.Author, "@"))
 	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("В главное меню", "Start")))
 
@@ -49,7 +50,7 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 		msg := tgbotapi.NewEditMessageTextAndMarkup(
 			botCtx.UserID,
 			state.MessageID,
-			Joke.Text,
+			Text,
 			tgbotapi.NewInlineKeyboardMarkup(rows...),
 		)
 		msg.ParseMode = "HTML"
@@ -57,7 +58,7 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 	} else {
 		msg := tgbotapi.NewMessage(
 			botCtx.UserID,
-			Joke.Text,
+			Text,
 		)
 		msg.ParseMode = "HTML"
 		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)

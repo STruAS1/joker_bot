@@ -170,7 +170,7 @@ func HandleWithdraw(botCtx *contextBot.BotContext) {
 	switch WithdrawData.ActiveStep {
 	case 0:
 		if botCtx.CallbackQuery.Data == "Withdraw" {
-			var Text string = fmt.Sprintf("💰 <b>Баланс: <code>%s</code> $JOKER</b>\n", Utilities.ConvertToFancyStringFloat(fmt.Sprintf("%f", float64((uint64(user.Balance/1_000_000)))/1000)))
+			var Text string = fmt.Sprintf("💰 <b>Баланс: <code>%s</code> $JOKER</b>\n", fmt.Sprintf("%f", float64((uint64(user.Balance/1_000_000)))/1000))
 			Text += "Введите сумму вывода"
 			if user.Balance == 0 {
 				if state.MessageID == 0 {
@@ -212,6 +212,7 @@ func HandleWithdraw(botCtx *contextBot.BotContext) {
 				if _, err := botCtx.SendMessage(msg); err != nil {
 					fmt.Print(err)
 				}
+				return
 			}
 			AmountUint64 := uint64(amount_float * 1_000_000_000)
 			fmt.Print(AmountUint64, '\n')

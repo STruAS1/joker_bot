@@ -18,6 +18,7 @@ type JokesPages struct {
 }
 
 type Joke struct {
+	ID                 uint
 	ShortName          string
 	Text               string
 	CountOfEvaluations uint
@@ -47,6 +48,7 @@ func HandleMyJokes(botCtx *context.BotContext) {
 				ShortName = ShortName[:20]
 			}
 			j := Joke{
+				ID:                 joke.ID,
 				ShortName:          string(ShortName),
 				Text:               joke.Text,
 				CountOfEvaluations: joke.Evaluations,
@@ -115,6 +117,7 @@ func HandleMyJokeViewer(botCtx *context.BotContext, page uint8, Index uint8) {
 	text := fmt.Sprintf("🃏 <b>Шутка:</b>\n%s \n\n\n✦──────────✦ \n<b>👀Просмотров:</b>  <code>%s</code>\n<b>⭐️Оценка:</b> <code>%s</code>\n✦──────────✦", joke.Text, Utilities.ConvertToFancyString(int(joke.CountOfEvaluations)), Utilities.ConvertToFancyString(int(joke.AVGScore/20)))
 	var rows [][]tgbotapi.InlineKeyboardButton
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📋 Обратно к списку", "back")))
+	text += fmt.Sprintf("\n\n<i><b>Поделись с корешом:</b> \n<code>https://t.me/JOKER8BOT?start=joke_%d</code></i>", joke.ID)
 	msg := tgbotapi.NewEditMessageTextAndMarkup(
 		botCtx.UserID,
 		state.MessageID,
