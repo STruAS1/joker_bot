@@ -3,15 +3,12 @@ package handlers
 import (
 	// "SHUTKANULbot/bot/handlers/MenuJokes"
 	TonConnectCallback "SHUTKANULbot/TonConnectCallBack"
-	"SHUTKANULbot/Utilities"
 	"SHUTKANULbot/bot/context"
 	"SHUTKANULbot/bot/handlers/MenuJokes"
 	"SHUTKANULbot/bot/handlers/start"
 	"SHUTKANULbot/db"
 	"SHUTKANULbot/db/models"
 	"strings"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var nameHandlers = map[string]func(*context.BotContext){
@@ -68,13 +65,13 @@ func HandleUpdate(botCtx *context.BotContext) {
 				context.UpdateUserName(botCtx, "start")
 				start.HandleSettings(botCtx)
 			case "NewJoke":
-				time, IsCooldow := Utilities.GetRemainingCooldown(uint(botCtx.UserID))
-				if IsCooldow {
-					alert := tgbotapi.NewCallbackWithAlert(botCtx.CallbackQuery.ID, "Вы сможете шуткануть через "+time)
-					alert.ShowAlert = false
-					botCtx.Ctx.BotAPI.Request(alert)
-					return
-				}
+				// time, IsCooldow := Utilities.GetRemainingCooldown(uint(botCtx.UserID))
+				// if IsCooldow {
+				// 	alert := tgbotapi.NewCallbackWithAlert(botCtx.CallbackQuery.ID, "Вы сможете шуткануть через "+time)
+				// 	alert.ShowAlert = false
+				// 	botCtx.Ctx.BotAPI.Request(alert)
+				// 	return
+				// }
 				context.UpdateUserName(botCtx, "JokeMenu")
 				MenuJokes.NewJokeHandle(botCtx)
 			case "ViewJokes":

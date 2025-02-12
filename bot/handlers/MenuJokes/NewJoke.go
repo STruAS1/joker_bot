@@ -44,7 +44,18 @@ func NewJokeHandle(botCtx *context.BotContext) {
 				return
 			}
 			randomIndex := rand.Intn(len(jokeRequests))
-			msgText := jokeRequests[randomIndex]
+			var msgText string
+			msgText += "<i><b>Шуткануть?</b> - Нет бля, хуй соснуть</i>"
+			msgText += "\n\n<b>Короче, всё просто:</b>"
+			msgText += "\n<i><blockquote>• Пишешь шутку 🖊"
+			msgText += "\n• Она попадает в ленту шуток 📋"
+			msgText += "\n• Скидываешь кентам 👬🏿"
+			msgText += "\n• Получаешь токены 💩"
+			msgText += "\n• Зарабатываешь бабки (НЕТ) 💸</blockquote></i>"
+			msgText += "\n\n<b>Правила:</b>"
+			msgText += "\n<i><blockquote>• Публикация раз 12 часов 🕐"
+			msgText += "\n• Модерации нету ❗️</blockquote></i>\n\n<i>"
+			msgText += jokeRequests[randomIndex] + "</i>"
 
 			Joke.ActiveStep++
 			var rows [][]tgbotapi.InlineKeyboardButton
@@ -54,6 +65,7 @@ func NewJokeHandle(botCtx *context.BotContext) {
 				msg := tgbotapi.NewEditMessageTextAndMarkup(botCtx.UserID, state.MessageID, msgText, tgbotapi.NewInlineKeyboardMarkup(rows...))
 				msg.ParseMode = "HTML"
 				botCtx.Ctx.BotAPI.Send(msg)
+
 			} else {
 				msg := tgbotapi.NewMessage(botCtx.UserID, msgText)
 				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)

@@ -15,9 +15,6 @@ func HandleMenu(bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonURL("Оценить шутку", fmt.Sprintf("https://t.me/JOKER8BOT?start=joke_%d", Joke.ID)),
 	))
-	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Ещё шутка", "ViewJoke"),
-	))
 	if !Joke.AnonymsMode && Joke.Author != "" {
 		Text += "\n\n<b><i>Автор:</i></b> @" + fmt.Sprintf("%s", strings.TrimPrefix(Joke.Author, "@"))
 	}

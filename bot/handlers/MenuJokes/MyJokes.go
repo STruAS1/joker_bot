@@ -114,7 +114,7 @@ func HandleMyJokeViewer(botCtx *context.BotContext, page uint8, Index uint8) {
 		HandleMyJokes(botCtx)
 	}
 	joke := _JokesPages.Pages[page][Index]
-	text := fmt.Sprintf("🃏 <b>Шутка:</b>\n%s \n\n\n✦──────────✦ \n<b>👀Просмотров:</b>  <code>%s</code>\n<b>⭐️Оценка:</b> <code>%s</code>\n✦──────────✦", joke.Text, Utilities.ConvertToFancyString(int(joke.CountOfEvaluations)), Utilities.ConvertToFancyString(int(joke.AVGScore/20)))
+	text := fmt.Sprintf("🃏 <b>Шутка:</b>\n%s \n\n\n✦──────────✦ \n<b>👀Просмотров:</b>  <code>%s</code>\n<b>⭐️Оценка:</b> <code>%s</code>\n✦──────────✦", joke.Text, Utilities.ConvertToFancyString(int(joke.CountOfEvaluations)), Utilities.ConvertToFancyStringFloat(fmt.Sprintf("%f", float64(joke.AVGScore)/20)))
 	var rows [][]tgbotapi.InlineKeyboardButton
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("📋 Обратно к списку", "back")))
 	text += fmt.Sprintf("\n\n<i><b>Поделись с корешом:</b> \n<code>https://t.me/JOKER8BOT?start=joke_%d</code></i>", joke.ID)

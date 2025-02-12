@@ -4,6 +4,7 @@ import (
 	"SHUTKANULbot/bot/context"
 	"SHUTKANULbot/bot/handlers"
 	handlersgroup "SHUTKANULbot/bot/handlersGroup"
+	InlineQuery "SHUTKANULbot/bot/inlineQuery"
 	"SHUTKANULbot/config"
 	"log"
 	"sync"
@@ -60,11 +61,10 @@ func processUpdate(ctx *context.Context, update tgbotapi.Update) {
 
 	if update.Message != nil {
 		if update.Message.Chat.Type != "private" {
-			if update.Message.Chat.Type == "group" {
-				handlersgroup.HandleUpdate(ctx.BotAPI, &update)
-				return
-			}
+
+			handlersgroup.HandleUpdate(ctx.BotAPI, &update)
 			return
+
 		}
 		userID = update.Message.Chat.ID
 		message = update.Message
@@ -76,6 +76,9 @@ func processUpdate(ctx *context.Context, update tgbotapi.Update) {
 		userID = update.CallbackQuery.Message.Chat.ID
 		callbackQuery = update.CallbackQuery
 		lastAction = "callback"
+	} else if update.InlineQuery != nil {
+		InlineQuery.HandleInlineQuery(ctx.BotAPI, &update)
+		return
 	} else {
 		return
 	}
