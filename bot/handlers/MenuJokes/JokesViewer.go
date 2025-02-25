@@ -40,9 +40,9 @@ func HandleJokeViewer(botCtx *context.BotContext) {
 		row = append(row, tgbotapi.NewInlineKeyboardButtonData(fmt.Sprint(i+1), fmt.Sprintf("Evolution_%d_%d", i+1, Joke.ID)))
 	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(row...))
-	Text := Joke.Text
+	Text := fmt.Sprintf("<b>#%d\n\n</b>", Joke.ID) + Joke.Text
 	if !Joke.AnonymsMode && Joke.Author != "" {
-		Text += "\n\n<b><i>Автор:</i></b> @" + fmt.Sprintf("%s", strings.TrimPrefix(Joke.Author, "@"))
+		Text += "\n\n<b><i>Автор:</i></b> @" + strings.TrimPrefix(Joke.Author, "@")
 	}
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("В главное меню", "Start")))
 

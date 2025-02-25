@@ -2,6 +2,7 @@ package main
 
 import (
 	TonConnectCallback "SHUTKANULbot/TonConnectCallBack"
+	"SHUTKANULbot/Utilities"
 	"SHUTKANULbot/bot"
 	"SHUTKANULbot/config"
 	"SHUTKANULbot/db"
@@ -30,7 +31,7 @@ func main() {
 		log.Fatalln("get config err: ", err.Error())
 		return
 	}
-
+	go Utilities.StartDailyJokeSenderMSK(*cfg)
 	err = client.AddConnectionsFromConfig(context.Background(), cfgs)
 	if err != nil {
 		log.Fatalln("connection err: ", err.Error())

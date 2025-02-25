@@ -344,6 +344,21 @@ func GetRemainingCooldown(userIDTG uint) (string, bool) {
 	}
 	return "", false
 }
+func GetBestJoke() (Joke, error) {
+	var bestJoke Joke
+	query := `
+		SELECT id, text, author_user_name, anonyms_mode
+		FROM jokes
+		WHERE created_at >= NOW() - INTERVAL '1 day'
+		ORDER BY (avg_score * evaluations) / (POWER(DATE_PART('day', NOW() - created_at) + 1, 1.2)) DESC
+		LIMIT 1;
+	`
+	err := db.DB.Raw(query).Scan(&bestJoke).Error
+	if err != nil || bestJoke.ID == 0 {
+		return Joke{}, fmt.Errorf("не удалось найти лучшую шутку")
+	}
+	return bestJoke, nil
+}
 
 func init() {
 	go startCacheCleaner()
